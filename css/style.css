@@ -1,0 +1,40 @@
+svg {
+    border:1px solid gray;
+    border-radius:10px;
+    height:800px;
+    width:1000px;
+    margin:5px;
+}
+
+.selected {
+    stroke: cyan;
+    stroke-width: 4;
+}
+#wrapper {
+    margin:auto;
+    width:1440px;
+}
+#xValue{
+    width:150px;
+}
+#yValue{
+    width:150px;
+}
+#year-input{
+    width:80px;
+}
+#region-select{
+    width: 125px;
+}
+
+div.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: .5rem;
+    background: #FFFFFF;
+    color: #313639;
+    border: 1px solid #313639;
+    border-radius: 8px;
+    pointer-events: none;
+    font-size: 1.3rem;
+}
