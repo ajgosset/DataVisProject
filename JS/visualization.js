@@ -1,87 +1,99 @@
+let svgSimple = d3.select('#node-graph');
+let svgWidth = 398;
+let svgHeight = 698;
+
+
 let data;
-
-//Margins
-const margin = {top: 10, right: 30, bottom: 30, left: 40},
-  width = 500 - margin.left - margin.right,
-  height = 500 - margin.top - margin.bottom;
-
-const svg = d3.select("#Node_Graph")
-  .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform",
-          `translate(${margin.left}, ${margin.top})`);
 
 //Get Data
 Promise.all([d3.csv('../Data/ProgrammingLanguagesTaggedInPython/TagsDated.csv'),
-  d3.csv('../Data/MostPopularProgrammingLangs/Most Popular ProgrammingLanguagesfrom2004to2021.csv')])
-  .then(function(values){
+d3.csv('../Data/MostPopularProgrammingLangs/Most Popular ProgrammingLanguagesfrom2004to2021.csv')])
+.then(function(values){
 
-  let tagsData = values[0];
-  let popularData = values[1];
-  let programmingLangs = Object.keys(popularData[0]).slice(1);
+let tagsData = values[0];
+let popularData = values[1];
+let programmingLangs = Object.keys(popularData[0]).slice(1);
 
-  let dataNodes = [];
-  let dataLinks = [];
+let dataNodes = [];
+let dataLinks = [];
 
-  //Data wrangling
-  programmingLangs.forEach((lang, index) => {
+//Data wrangling
+programmingLangs.forEach((lang, index) => {
     if(lang != 'Python'){
-      dataLinks.push({'Source': index,
-        'Target': 19});
+    dataLinks.push({'source': lang,
+        'target': 'Python'});
     }
-    dataNodes.push({'name': lang, 'Id': index})
-  });
+    dataNodes.push({'name': lang, 'id': index})
+});
 
-  data = {
+data = {
     'nodes': dataNodes,
     'links': dataLinks
-  }
-
-  console.log(data)
-  drawNodeGraph();
+}
+drawNodeGraph();
 })
 
 function drawNodeGraph(){
 
-  console.log(svg);
-  // Initialize the links
-  const link = svg
-    .selectAll("line")
-    .data(data.links)
-    .join("line")
-      .style("stroke", "#aaa")
+    let nodes = data.nodes;
+    let links = data.links;
 
-  // Initialize the nodes
-  const node = svg
-    .selectAll("circle")
-    .data(data.nodes)
-    .join("circle")
-      .attr("r", 20)
-      .style("fill", "#69b3a2")
+// Here's the d3.simulation.
+let simulation1 = d3.forceSimulation()
+                    .nodes(nodes);
 
-  // Let's list the force we wanna apply on the network
-  const simulation = d3.forceSimulation(data.nodes)                 // Force algorithm is applied to data.nodes
-      .force("link", d3.forceLink()                               // This force provides links between nodes
-            .id(function(d) { return d.id; })                     // This provide  the id of a node
-            .links(data.links)                                    // and this the list of links
-      )
-      .force("charge", d3.forceManyBody().strength(-400))         // This adds repulsion between nodes. Play with the -400 for the repulsion strength
-      .force("center", d3.forceCenter(width / 2, height / 2))     // This force attracts nodes to the center of the svg area
-      .on("end", ticked);
+simulation1.force('charge',d3.forceManyBody()) 
+            .force('collide', d3.forceCollide())
+            .force('center', d3.forceCenter( svgWidth/2, svgHeight/2 ));
 
-  // This function is run at each iteration of the force algorithm, updating the nodes position.
-  function ticked() {
-    link
-        .attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
+// Now add the nodes to svg as circles
+let simpleNodes = svgSimple.selectAll('.node')
+                          .data(nodes)
+                          .join('circle')
+                          .classed('node',true)
+                          .style('fill', d => d.sex == 'F' ? 'khaki' : 'paleturquoise' )
+                          .attr('r', 20);
+let simpleLabels = svgSimple.selectAll('.node-label')
+                          .data(nodes)
+                          .join('text')
+                          .classed('node-label', true)
+                          .text(d => d.name)
 
-    node
-         .attr("cx", function (d) { return d.x+6; })
-         .attr("cy", function(d) { return d.y-6; });
-  }
+function updateLayout1() {
+    simpleNodes.attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+    simpleLabels.attr('x', d => d.x)
+                .attr('y', d => d.y);
+}
 
+simulation1.on('tick', updateLayout1)
+          .on('end', () => { console.log(nodes); });
+
+let linkForce1 = d3.forceLink(links)
+                    .id(d => d.name);
+
+
+simulation1.force('links', linkForce1)
+            .on('tick', updateLayout2);
+
+let simpleLinks = svgSimple.selectAll('.link')
+                            .data(links)
+                            .join('line')
+                            .classed('link',true);
+
+// And an updated layout function
+function updateLayout2() {
+    simpleNodes.attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+    simpleLabels.attr('x', d => d.x)
+                .attr('y', d => d.y);
+    simpleLinks.attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+}
+
+linkForce1.distance(50)   // default distance is 30
+        .strength(.33)   // default strength is 1
+simulation1.force('charge', d3.forceManyBody().strength(-400));
 }
