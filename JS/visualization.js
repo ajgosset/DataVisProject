@@ -1,6 +1,10 @@
 let tagsData = [];
 let popularData = [];
 let programmingLangs = [];
+let dateMap = {};
+let dateList = []
+
+let date;
 
 //Margins
 const margin = {top: 10, right: 30, bottom: 30, left: 40},
@@ -15,6 +19,8 @@ const svg = d3.select("#Node_Graph")
     .attr("transform",
           `translate(${margin.left}, ${margin.top})`);
 
+
+
 //Get Data
 Promise.all([d3.csv('../Data/ProgrammingLanguagesTaggedInPython/TagsDated.csv'),
   d3.csv('../Data/MostPopularProgrammingLangs/Most Popular ProgrammingLanguagesfrom2004to2021.csv')])
@@ -24,7 +30,18 @@ Promise.all([d3.csv('../Data/ProgrammingLanguagesTaggedInPython/TagsDated.csv'),
   popularData = values[1];
   programmingLangs = Object.keys(popularData[0]).slice(1);
 
-  drawNodeGraph();
+  //build dateMap indexes
+    popularData.forEach(function(item, index){
+      dateMap[item.Date] = index
+      dateList.push(item.Date)
+    })
+
+    console.log(popularData)
+    console.log(dateMap)
+
+    drawSlider()
+    drawPieChart(0)
+  //drawNodeGraph();
 })
 
 function drawNodeGraph(){
@@ -65,5 +82,145 @@ function drawNodeGraph(){
          .attr("cx", function (d) { return d.x+6; })
          .attr("cy", function(d) { return d.y-6; });
   }
+
+}
+
+function drawSlider(){
+  let formatDateIntoYear = d3.timeFormat("%Y");
+  let formatDate = d3.timeFormat("%B %Y");
+  let startDate = new Date("2004-07-01")
+  let endDate = new Date("2021-09-01")
+
+  let slider_svg = d3.select("#slider_svg")
+
+  let x = d3.scaleTime()
+    .domain([startDate, endDate])
+    .range([0, 900])
+    .clamp(true);
+
+  let slider = slider_svg.append("g")
+      .attr("class", "slider")
+      .attr("transform", "translate(" + margin.left + "," + 50 + ")");
+
+  slider.append("line")
+      .attr("class", "track")
+      .attr("x1", x.range()[0])
+      .attr("x2", x.range()[1])
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+      .attr("class", "track-inset")
+      .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+      .attr("class", "track-overlay")
+      .call(d3.drag()
+          .on("start.interrupt", function() { slider.interrupt(); })
+          .on("start drag", function() {
+            currentValue = d3.event.x;
+            update(x.invert(currentValue));
+          })
+      );
+
+  slider.insert("g", ".track-overlay")
+      .attr("class", "ticks")
+      .attr("transform", "translate(0," + 18 + ")")
+      .selectAll("text")
+      .data(x.ticks(10))
+      .enter()
+      .append("text")
+      .attr("x", x)
+      .attr("y", 10)
+      .attr("text-anchor", "middle")
+      .text(function(d) { return formatDateIntoYear(d); });
+
+  let label = slider.append("text")
+      .attr("class", "label")
+      .attr("text-anchor", "middle")
+      .text(formatDate(startDate))
+      .attr("transform", "translate(0," + (-25) + ")")
+
+  let handle = slider.insert("circle", ".track-overlay")
+      .attr("class", "handle")
+      .attr("r", 9);
+
+  console.log(dateMap)
+    function update(h) {
+      console.log(dateMap[formatDate(h)])
+      drawPieChart(dateMap[formatDate(h)])
+
+      // update position and text of label according to slider scale
+      handle.attr("cx", x(h));
+      label
+          .attr("x", x(h))
+          .text(formatDate(h));
+    }
+}
+
+
+
+
+function drawPieChart(dateIndex){
+
+  let svg = d3.select("#pie_chart_svg"),
+      width = svg.attr("width"),
+      height = svg.attr("height")
+
+  svg.selectAll("*").remove();
+
+
+  let radius = 200
+  let monthData = parseMonth(popularData[dateIndex])
+
+
+  let g = svg.append("g")
+      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+  // Step 4
+  let ordScale = d3.scaleOrdinal()
+      .domain(monthData)
+      .range(d3.schemeSet3);
+
+  // Step 5
+  let pie = d3.pie().value(function(d) {
+    return d.value;
+  });
+
+  let arc = g.selectAll("arc")
+      .data(pie(monthData))
+      .enter();
+
+  // Step 6
+  let path = d3.arc()
+      .outerRadius(radius)
+      .innerRadius(0);
+
+  arc.append("path")
+      .attr("d", path)
+      .attr("fill", function(d) { return ordScale(d.data.name); });
+
+  // Step 7
+  let label = d3.arc()
+      .outerRadius(radius)
+      .innerRadius(0);
+
+  arc.append("text")
+      .attr("transform", function(d) {
+        return "translate(" + label.centroid(d) + ")";
+      })
+      .text(function(d) { return d.data.name; })
+      .style("font-family", "arial")
+      .style("font-size", 15);
+}
+
+function parseMonth(data){
+  let parsed = []
+
+  for (const language in data){
+    if (language != "Date"){
+      parsed.push({
+        name: language,
+        value: parseFloat(data[language])
+      })
+    }
+  }
+
+  return parsed
 
 }
