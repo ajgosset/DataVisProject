@@ -1,6 +1,4 @@
-let tagsData = [];
-let popularData = [];
-let programmingLangs = [];
+let data;
 
 //Margins
 const margin = {top: 10, right: 30, bottom: 30, left: 40},
@@ -20,14 +18,34 @@ Promise.all([d3.csv('../Data/ProgrammingLanguagesTaggedInPython/TagsDated.csv'),
   d3.csv('../Data/MostPopularProgrammingLangs/Most Popular ProgrammingLanguagesfrom2004to2021.csv')])
   .then(function(values){
 
-  tagsData = values[0];
-  popularData = values[1];
-  programmingLangs = Object.keys(popularData[0]).slice(1);
+  let tagsData = values[0];
+  let popularData = values[1];
+  let programmingLangs = Object.keys(popularData[0]).slice(1);
 
+  let dataNodes = [];
+  let dataLinks = [];
+
+  //Data wrangling
+  programmingLangs.forEach((lang, index) => {
+    if(lang != 'Python'){
+      dataLinks.push({'Source': index,
+        'Target': 19});
+    }
+    dataNodes.push({'name': lang, 'Id': index})
+  });
+
+  data = {
+    'nodes': dataNodes,
+    'links': dataLinks
+  }
+
+  console.log(data)
   drawNodeGraph();
 })
 
 function drawNodeGraph(){
+
+  console.log(svg);
   // Initialize the links
   const link = svg
     .selectAll("line")
