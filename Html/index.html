@@ -1,15 +1,189 @@
 <!DOCTYPE html>
+ <html>
+    <head>
+        <title>Basic network</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" />
+        <style>
+            svg {
+                border:1px solid purple;
+                width: 95%;
+                max-width:700px;
+                height:400px;   
+            }
+            .node {
+                stroke: black;
+                stroke-width: 1px;
+            }
+            .node-label {
+                font-size: .8em;
+                text-anchor: middle;
+                alignment-baseline: middle;
+            }
+            .link {
+                stroke: #999;
+                stroke-width:2px;
+                stroke-opacity: 0.5;
+                fill:none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class='container-fluid text-center'>
+            <h1>Network layouts</h1>
+            <svg id='node-graph'></svg>
+        </div>
 
-<head>
-    <meta charset="utf-8">
+        <script>
+            let svgSimple = d3.select('#node-graph');
+            let svgWidth = svgSimple.node().clientWidth;
+            let svgHeight = svgSimple.node().clientHeight;
+            
+            console.log(svgHeight);
+            console.log(svgWidth);
 
-    <!-- <link rel="stylesheet" href="css/style.css"> -->
-    <title>CSE 494 Visualization Project</title>
-    <script src="https://d3js.org/d3.v6.js"></script>
-    <script src="/JS/visualization.js"></script>
-</head>
+            let data;
 
-<body>
-    <h1>CSE 494 Visualization Project</h1>
-    <div id='Node_Graph'></div>
-</body>
+            //Get Data
+            Promise.all([d3.csv('../Data/ProgrammingLanguagesTaggedInPython/TagsDated.csv'),
+            d3.csv('../Data/MostPopularProgrammingLangs/Most Popular ProgrammingLanguagesfrom2004to2021.csv')])
+            .then(function(values){
+
+            let tagsData = values[0];
+            let popularData = values[1];
+            let programmingLangs = Object.keys(popularData[0]).slice(1);
+
+            let dataNodes = [];
+            let dataLinks = [];
+
+            //Data wrangling
+            programmingLangs.forEach((lang, index) => {
+                if(lang != 'Python'){
+                dataLinks.push({'source': lang,
+                    'target': 'Python'});
+                }
+                dataNodes.push({'name': lang, 'id': index})
+            });
+
+            data = {
+                'nodes': dataNodes,
+                'links': dataLinks
+            }
+            drawNodeGraph();
+            })
+
+            function drawNodeGraph(){
+
+                let nodes = data.nodes;
+                let links = data.links;
+
+            // Here's the d3.simulation.
+            let simulation1 = d3.forceSimulation()
+                                .nodes(nodes);
+            
+            /* 
+                The simulation is the 'engine' of the force directed graph.
+                - It determines the forces applied to each node and updates its position
+                - It decides when to stop updating the layout
+                - It has a number of variables to control behavior
+                    > center: attracts nodes to a specific position (ie, center of SVG)
+                    > many-body: apply a force between all nodes
+                                 d3.forceManyBody() is default params, but can also modify
+                                 strength:
+                                    if positive, simulates gravity (attraction) between nodes,
+                                    if negative, apply charge (repulsion) between nodes
+                    > collide: consider nodes as circles w/ radius and avoid overlapping
+                    > links: pull linked nodes together based on a link's distance
+                            (we don't yet have links)
+                    > alpha: the 'energy' of the graph at each iteration, which decreases
+                             over iterations. When alpha is under alphaMin, the simulation stops
+            */
+
+            // Let's add a many-body force using the default settings (d3.forceManyBody) 
+            // plus collision avoidance and centering.
+            simulation1.force('charge',d3.forceManyBody()) 
+                       .force('collide', d3.forceCollide())
+                       .force('center', d3.forceCenter( svgWidth/2, svgHeight/2 ));
+            
+            // Now add the nodes to svg as circles
+            let simpleNodes = svgSimple.selectAll('.node')
+                                      .data(nodes)
+                                      .join('circle')
+                                      .classed('node',true)
+                                      .style('fill', d => d.sex == 'F' ? 'khaki' : 'paleturquoise' )
+                                      .attr('r', 20);
+            let simpleLabels = svgSimple.selectAll('.node-label')
+                                      .data(nodes)
+                                      .join('text')
+                                      .classed('node-label', true)
+                                      .text(d => d.name)
+
+            /*
+                Now we want to use the simulation to update the locations 
+                of the nodes after every tick (iteration) of the simulation.
+            */
+
+           // This function will update the positions of the cirlces and labels
+           function updateLayout1() {
+                simpleNodes.attr('cx', d => d.x)
+                            .attr('cy', d => d.y);
+                simpleLabels.attr('x', d => d.x)
+                            .attr('y', d => d.y);
+           }
+
+           // Now instruct the simulation to call updateLayout at every iteration.
+           // For debugging, we'll print out the nodes dataset when the simulation stops.
+           // Notice that each item in nodes now has extra attributes: index, vx, vy, x, y.
+           simulation1.on('tick', updateLayout1)
+                      .on('end', () => { console.log(nodes); });
+        
+           /* 
+                Now let's add links to the graph by doing the following.
+                - Create the link data
+                - Create a link force and add it to simulation1
+                - phyiscally draw the links on the page
+                - modify updateLayout to include the link positionin
+           */
+
+            console.log(nodes);
+            console.log(links);            // Here's the link force
+            // the id() function is an accessor function that maps
+            // data in the 'nodes' array to text in the 'links' array.
+            let linkForce1 = d3.forceLink(links)
+                               .id(d => d.name);
+
+            // Adding the link force to the simulation
+            // and call and updated layout function that 
+            // also updates line positions
+            simulation1.force('links', linkForce1)
+                        .on('tick', updateLayout2);
+
+            // Now draw the links on the svg
+            let simpleLinks = svgSimple.selectAll('.link')
+                                        .data(links)
+                                        .join('line')
+                                        .classed('link',true);
+
+            // And an updated layout function
+            function updateLayout2() {
+                simpleNodes.attr('cx', d => d.x)
+                            .attr('cy', d => d.y);
+                simpleLabels.attr('x', d => d.x)
+                            .attr('y', d => d.y);
+                simpleLinks.attr('x1', d => d.source.x)
+                           .attr('y1', d => d.source.y)
+                           .attr('x2', d => d.target.x)
+                           .attr('y2', d => d.target.y);
+           }
+
+           // Adding links pulled the nodes very close together.
+           // There are *lots* of variables for modifying simualtions, but you can
+           // play around with modifying the distance and strength of the linkForce,
+           // as well as the charge force on the simulation, to affect the layout
+           linkForce1.distance(50)   // default distance is 30
+                    .strength(.33)   // default strength is 1
+           simulation1.force('charge', d3.forceManyBody().strength(-400));
+        }
+        </script>
+    </body>
+</html>
