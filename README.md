@@ -12,3 +12,5 @@ Slider that updates the pie graph based on month/year
 ![image](https://user-images.githubusercontent.com/31517102/142144896-84728432-33f3-426b-8385-f728c4bff901.png)
 
 ![image](https://user-images.githubusercontent.com/79809168/142149207-535460ae-efca-4a44-b1ed-b4f55cf9bacb.png)
+
+<img width="654" alt="Screen Shot 2021-11-17 at 12 32 07 AM" src="https://user-images.githubusercontent.com/79809168/142155832-b76a65f5-04c7-4d1f-b4d0-feb68c937897.png">
